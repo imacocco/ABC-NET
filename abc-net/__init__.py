@@ -1,4 +1,4 @@
-from .graph_operations import *
+from graph_operations import *
 from generators import *
 from plot import *
 from rejection_abc import *

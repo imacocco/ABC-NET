@@ -1,8 +1,11 @@
+# Commonly used graph generators
+
 import numpy as np
 import networkx as nx
 import graph_tool as gt
 import graph_tool.stats as gts
 rng = np.random.default_rng()
+from sklearn.neighbors import NearestNeighbors
 
 
 def build_erdosh_reny(n: int, p: float) -> gt.Graph:
@@ -23,7 +26,7 @@ def build_erdosh_reny(n: int, p: float) -> gt.Graph:
     return G
 
 
-def build_extended_barabasi_albert_graph(n: int, m: int = 1, p: float = 0.25, q: float = 0.25) -> gt.Graph:
+def build_extended_barabasi_albert(n: int, m: int = 1, p: float = 0.25, q: float = 0.25) -> gt.Graph:
     """
     Build an extended Barabasi Albert
     Args:
@@ -105,27 +108,32 @@ def build_planted_partition(l: int = 20, k: int = 30, p_in: float = 0.25, p_out:
     return G
 
 
-def build_net_from_pos(n: int, d: int, D: int, noise_size: float = 0.001, \
-                       threshold: float = None, nn: int = None) -> gt.Graph():
+def build_geom_net(X = None, n: int = None, d: int = None, D: int = None, noise: float = 0.,
+                       threshold: float = None, nn: int = None, lambda_poisson: float = None) -> gt.Graph():
     """
-    Build graph from geometrical points with given d embedded into D
+    Build graph from given geometrical points X or create them with given d embedded into D
     Args:
+        X: datapoints
         n: number of points/nodes
         d: intrinsic dimension
         D: embedding dimension
         noise_size: noise in embedding dimensions
         threshold (float): radius within neighbours are taken
-        nn (int): number of neighbours considered
+        nn (int): number of neighbours considered (uniform for all vertices)
+        lambda_poisson (float): the number of neighbours to be considered for each vertex is extracted from
+            a Poisson distribution (with expected value lambda), instead of being uniform
     Returns:
         G: graph
     """
-    from sklearn.neighbors import NearestNeighbors
-    assert D > d, "embedding dimension must be higher than intrinsic one"
-    assert threshold is not None or nn is not None, "set the threshold or the number of neighbours"
-    
-    X = rng.uniform(0,1,size=(n,d))
-    y = rng.normal(scale=noise_size,size=(n,D-d))
-    X = np.c_[X,y]
+
+    # assert threshold is not None or nn is not None, "set the threshold or the number of neighbours"
+
+    if X is None:
+        assert ((n is not None) and (d is not None)), "if datapoints are not given, set n and d at least"
+        X = rng.uniform(0,1,size=(n,d))
+        if noise > 0 and D > d:
+            X = np.c_[X, np.zeros((n, D - d))] + rng.normal(scale=noise, size=(n, D))
+
     if nn is not None: 
         maxk = nn
     else:
@@ -133,15 +141,19 @@ def build_net_from_pos(n: int, d: int, D: int, noise_size: float = 0.001, \
         
     nbrs = NearestNeighbors(n_neighbors=maxk).fit(X)
     distances, dist_indices = nbrs.kneighbors(X)
-    
-    if nn is not None:
-        edge_list = [ (i[0], target) for i in dist_indices for target in i[1:] ]
+
+    if lambda_poisson is not None:
+        k_n = rng.poisson(lambda_poisson, size=n)
+        edge_list = [ (i[0], target) for i in dist_indices for target in i[1:k_n[i[0]]+1] ]
+    elif nn is not None:
+        edge_list = [ (i[0], target) for i in dist_indices for target in i[1:nn+1] ]
     else:
         edge_list = [ (i[0], target) for i in dist_indices for target in i[i < threshold] ]
 
     G = gt.Graph(directed=False)
     G.add_edge_list(edge_list)
     gts.remove_parallel_edges(G)
+    gts.remove_self_loops(G)
     
     return G
 
