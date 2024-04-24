@@ -1,15 +1,6 @@
 # ABC-NET
-This package allows to compute the Intrinsic Dimension of unweighted networks using the I3D estimator
-
-
-
-
-
-, contained in the [DADApy package]) (reference [here](https://www.sciencedirect.com/science/article/pii/S2666389922002070)).
-
-Parameter inference and model selection for network generating models
-
-
+This package allows to compute the Intrinsic Dimension of unweighted networks using the I3D estimator, contained in the DADApy package(reference [here](https://www.sciencedirect.com/science/article/pii/S2666389922002070)).
+By means of the PyABC package, we provide an interface to automatically perform a Sequential Monte Carlo Approximate Bayesian Computation (SMCABC) to use the ID signature as a summary statistic in order to infer the parameter of a given generative model that we want to use to model a reference network.
 
 ## Installation guide
 The routines in the package are mainly based on [graph-tool](https://github.com/antmd/graph-tool), [DADApy](https://github.com/sissa-data-science/DADApy) and [PyABC](https://github.com/ICB-DCM/pyABC/). In order to have everything working properly we suggest to install graph-tool first:
@@ -40,4 +31,4 @@ Refer to [DADApy documentation](https://dadapy.readthedocs.io/en/latest/index.ht
  -  C++ code for ID guided ABC
  -  Notebook examples:
   - ID calculation
-  - SMC-ABC
+  - SMC-ABC using a simple model
