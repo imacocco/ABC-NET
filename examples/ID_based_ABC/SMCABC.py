@@ -31,43 +31,13 @@ def main():
     def ID_max(x, x0):
         return np.max(abs(x["ID"][:parameters["R_max"]] - x0["ID"][:parameters["R_max"]]))
 
-    # if parameters["start_edge_fract"] > 0.000001:
-    #     exe = os.path.abspath('/home/imacocco/my_libs/julia_stuff/exe.jl')
-    #     n_procs = 12
-    # else:
-    #     #exe = os.path.abspath('/home/imacocco/my_libs/julia_stuff/exe_empty.jl')
-    #     exe = os.path.abspath('./julia_stuff/exe_empty.jl')
-    #     n_procs = 6
-
-
-
-    # def model_ext_old(par):
-    #     # convert params
-    #     par_ext = list(par.values())
-    #     par_ext.append(1.)
-    #     rng = np.random.default_rng(seed=int(max(par_ext[:-1])*1e12))
-    #     filename = os.path.join(path,'temp_'+str(rng.integers(2000000000))+'.json')
-    #     # perform simulation
-    #     os.system('julia ' + exe + ' \"' + str(par_ext) + '\" ' + filename + ' ' + str(parameters["start_edge_fract"]))
-    #     # load params
-    #     with open(filename,'r') as f:
-    #         observation = json.load(f)
-    #     # compute id
-    #     ide = IdDiscrete(np.zeros(shape=(len(observation['degree']), 1)), condensed=True)
-    #     ide.distances = np.array(observation['cum_nn']).T
-    #     # add ID to dictionary
-    #     observation["ID"],_ = ide.return_id_scaling(range(1,30+1),method='mle',plot=False)
-    #     # remove cumulatives
-    #     observation.pop('cum_nn')
-    #     # erase temp file
-    #     os.system('rm ' + filename)
-    #     return observation
-
+    # path to external executable, in this csae a Julia package for ABNG
     origin = os.path.abspath('./')
-    exe_dir = os.path.abspath('./julia_stuff/')
+    exe_dir = os.path.abspath('./julia_packages/')
     exe = 'exe_empty.jl'
     n_procs = 12 
 
+    # model passed to PyABC object
     def model_ext(par):
         # convert params
         par_ext = list(par.values())
@@ -89,7 +59,9 @@ def main():
         os.chdir(origin)
         return observation
 
+    # initialize the parameters of the model, depending on which model you use
     keys = ["p1","p2","p3","p4","p5","p6","p7","p8"]
+    # build a suitable prior
     prior = cp.Dirichlet_marg(parameters["dirichlet_params"][:-1],parameters["dirichlet_params"][-1])
     
     # sampler = pyabc.sampler.MulticoreParticleParallelSampler()
@@ -101,6 +73,8 @@ def main():
     abc = pyabc.ABCSMC(model_ext, prior, ID_max, 
                        population_size=parameters["smc_target_pop"],
                        sampler=sampler, 
+                       # use a custom transition of any contraint needs to be imposed among the parameters,
+                       # in this case they have to sum to 1
                        transitions=cp.my_MultivariateNormalTransition(),
                        # eps=pyabc.epsilon.QuantileEpsilon(initial_epsilon=parameters["smc_start_eps"])
                        )
@@ -110,24 +84,12 @@ def main():
     	os.remove(db_path)  
     db = "sqlite:///" + db_path
 
-    # if parameters["reference"] == "abng":
-    #     gt = np.array([0.0, 0.0, 0.597, 0.182, 0.0, 0.005, 0.146, 0.070])  # US power grid
-    #     gt_dic = dict(zip(keys,gt))
-    #     gt_observation = model_ext(gt_dic)
-    #     abc.new(db, observed_sum_stat=gt_observation, gt_par=gt_dic)
-
-    # elif parameters["reference"] == "ground_truth":
-    #     with open('/home/imacocco/sims/US_PG/gt/gt_observation.json','r') as f:
-    #         gt_observation = json.load(f)
-    #     for k in gt_observation.keys():
-    #         gt_observation[k] = np.array(gt_observation[k])
-    #     abc.new(db, observed_sum_stat=gt_observation)
-    # else:
-    #     print("Select a proper reference")
-    #     return 0
-
     gt_observation = {"ID": np.loadtxt(path+'id_ref.dat'), "seed":0}
-    #abc.load(db)
+    
+    # in case you want to resume a previous run
+    # abc.load(db)
+
+    #in case you want to start a new run
     abc.new(db, observed_sum_stat=gt_observation)
 
     history = abc.run(minimum_epsilon=parameters["smc_min_eps"],

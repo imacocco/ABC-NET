@@ -1,0 +1,9 @@
+{
+	"R_max": 25,
+    "dirichlet_params": [0.1,0.1,0.1,0.1,2.0,2.0,2.0,2.0,7],
+    "start_edge_fract": 0.0,
+	"smc_target_pop": 50,
+	"smc_max_nr_pop": 20,
+    "smc_min_eps": 0.1,
+    "reference": "ground_truth"
+}
